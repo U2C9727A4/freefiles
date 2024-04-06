@@ -1,0 +1,79 @@
+#!/bin/bash
+echo "WARNING: freefiles is a tool without the ability to save actual files from being overwritten."
+echo "I do not take responsibility for any file or data that gets corrupted, destroyed or deleted in any way."
+echo "freefiles uses physical block sizes of a device and not block sizes determined by filesystem or kernel."
+echo "Are you sure you want to continue? (type "y" to contine.)"
+read confirmation
+if [ "${confirmation}" != "y" ]; then
+	echo "Operation canceled."
+	exit
+fi
+
+
+
+
+# Get block size function
+# Returns with the block size of the device.
+# The first arguement is a device to get the block size of
+
+getblksz () {
+	echo $(blockdev --getpbsz ${1})
+}
+
+# Get root function
+# Checks for root permissions.
+
+getroot () {
+	user=$(whoami)
+	if [ "${user}" != "root" ]; then
+		echo "Please run the command with root."
+		exit 1
+	fi
+
+}
+
+
+
+# Write file function
+# Handles writing the file to blocks.
+# First arguement is input file AKA the file to be written
+# Second arguement is the output file (or device) to write the input file to.
+# Third arguement is the block to start writing to. example: files may be bigger than one block, so if block 300 is given to write to, this command writes to block 300, 301 and so on as many as necesarry.
+# Returns with the count of blocks that it has written to. 
+
+writefile () {
+	gseek=$(echo "${3} - 1" | bc)
+	writtenblocks=$(dd if=${1} of=${2} bs=$(getblksz ${2}) seek=${gseek} status=progress 2>&1 | grep -o "[0-9]+[0-9]" | tail -n +2 | bc)
+	echo "Written to ${writtenblocks} blocks."
+	echo "To recover this file later on, execute: freefiles recover ${2} ${1} ${3} ${writtenblocks}"
+}
+
+
+# Read file function
+# Handles reading files written by writefile()
+# The first arguement is the device the file is stored in.
+# Second arguement is the file to save the read data to.
+# Third arguement is the starting block
+# Fourth arguement is the amount of blocks to be read
+
+readfile () {
+	gskip=$(echo "${3} - 1" | bc)
+	dd if=${1} of=${2} bs=$(getblksz ${1}) skip=${gskip} count=${4}		
+
+}
+
+getroot
+if [ "${1}" == "recover" ]; then
+	startingblock=${4}
+	readamount=${5}
+	storeto=${3}
+	device=${2}
+	readfile ${device} ${storeto} ${startingblock} ${readamount}
+fi
+
+if [ "${1}" == "write" ]; then
+	input=${2}
+	device=${3}
+	block=${4}
+	writefile ${input} ${device} ${block}
+fi
