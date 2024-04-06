@@ -45,7 +45,7 @@ writefile () {
 	gseek=$(echo "${3} - 1" | bc)
 	filesize=$(stat -c %s ${1})
 	blockamountunrounded=$(echo ${filesize} / $(getblksz ${2}) | bc)
-	blockamount=$(echo "${blockamountunrounded}" | awk '{print int($1+0.999999)}')
+	blockamount=$(echo "${blockamountunrounded}" | awk '{print int($1+0.999999999999999999999999)}')
 	echo "I got block amount ${blockamount}"
 
 
@@ -65,7 +65,7 @@ writefile () {
 
 readfile () {
 	gskip=$(echo "${3} - 1" | bc)
-	dd if=${1} of=${2} bs=$(getblksz ${1}) skip=${gskip} conv=sync,block iflag=fullblock count=${4}		
+	dd if=${1} of=${2} bs=$(getblksz ${1}) skip=${gskip} conv=sync,block,sparse iflag=fullblock count=${4}		
 
 }
 
